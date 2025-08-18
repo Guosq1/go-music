@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>音乐播放器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e; /* 类似 QQ 音乐深色背景 */
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #2c2c2c;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .search-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        #searchInput {
+            width: 300px;
+            padding: 5px 10px;
+            font-size: 16px;
+        }
+
+        #searchBtn {
+            padding: 5px 15px;
+            margin-left: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .song-list, #searchResults {
+            width: 80%;
+            margin: 0 auto;
+        }
+
+        .song-item, .search-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            cursor: pointer;
+        }
+
+        .song-item:hover, .search-item:hover {
+            background-color: #333;
+        }
+
+        audio {
+            width: 100%;
+            margin: 20px auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>我的音乐播放器</h1>
+</header>
+
+<!-- 搜索框 -->
+<div class="search-container">
+    <input type="text" id="searchInput" placeholder="请输入歌曲名">
+    <button id="searchBtn">搜索</button>
+</div>
+
+<!-- 搜索结果 -->
+<div id="searchResults"></div>
+
+<!-- 歌曲列表 -->
+<div class="song-list" id="songList"></div>
+
+<!-- 播放器 -->
+<audio id="audioPlayer" controls></audio>
+
+<script>
+    const songListDiv = document.getElementById("songList");
+    const audioPlayer = document.getElementById("audioPlayer");
+
+    // 获取全部歌曲
+    function loadSongs() {
+        fetch('/api/songs')
+            .then(res => res.json())
+            .then(data => {
+                songListDiv.innerHTML = "";
+                data.forEach(song => {
+                    const div = document.createElement("div");
+                    div.className = "song-item";
+                    div.textContent = `${song.title} - ${song.artist}`;
+                    div.onclick = () => playSong(song);
+                    songListDiv.appendChild(div);
+                });
+            });
+    }
+
+    // 播放歌曲
+    function playSong(song) {
+        audioPlayer.src = song.url;
+        audioPlayer.play();
+    }
+
+    // 搜索功能
+    document.getElementById("searchBtn").addEventListener("click", function() {
+        const keyword = document.getElementById("searchInput").value;
+        if (!keyword) return;
+
+        fetch(`/api/songs/search?q=${encodeURIComponent(keyword)}`)
+            .then(res => res.json())
+            .then(data => {
+                const resultsDiv = document.getElementById("searchResults");
+                resultsDiv.innerHTML = "";
+
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = "<p>未找到相关歌曲</p>";
+                    return;
+                }
+
+                data.forEach(song => {
+                    const div = document.createElement("div");
+                    div.className = "search-item";
+                    div.textContent = `${song.title} - ${song.artist}`;
+                    div.onclick = () => playSong(song);
+                    resultsDiv.appendChild(div);
+                });
+            });
+    });
+
+    // 页面加载时显示全部歌曲
+    loadSongs();
+</script>
+</body>
+</html>

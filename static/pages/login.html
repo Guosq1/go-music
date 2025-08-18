@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { text-align: center; }
+        input { display: block; margin: 10px auto; padding: 10px; width: 200px; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background-color: #1db954; color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>登录</h1>
+    <input type="text" id="username" placeholder="用户名">
+    <input type="password" id="password" placeholder="密码">
+    <button onclick="login()">登录</button>
+    <p>没有账号？<a href="register.html" style="color: #1db954;">去注册</a></p>
+</div>
+
+<script>
+    function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+            alert('请填写用户名和密码');
+            return;
+        }
+
+        // 这里可以调用你的后端登录 API
+        fetch('/api/login', { method:'POST', body: JSON.stringify({username, password}) })
+
+        // 假设登录成功
+        alert('登录成功，进入音乐播放页面');
+        location.href = 'music.html';
+    }
+</script>
+</body>
+</html>
