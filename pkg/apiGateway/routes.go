@@ -2,7 +2,8 @@ package apiGateway
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/gsq/music_bakcend_micorservice/pkg/apihandler"
+	"github.com/gsq/music_bakcend_micorservice/pkg/apiHandler"
+	"github.com/gsq/music_bakcend_micorservice/utils"
 )
 
 func Setup() *gin.Engine {
@@ -26,6 +27,12 @@ func registerRoutes(r *gin.Engine) {
 		api.GET("/songs/:name", apiHandler.GetSongbyName)
 		api.POST("/login", apiHandler.Login)
 		api.POST("/register", apiHandler.Register)
+		// 需要认证的路由
+		auth := api.Group("")
+		auth.Use(utils.AuthMiddleware())
+		{
+			auth.GET("/check-auth", apiHandler.CheckAuth)
+		}
 		api.GET("/songs/search", apiHandler.SearchSongs)
 	}
 

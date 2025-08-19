@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/gsq/music_bakcend_micorservice/myredis"
+	"github.com/gsq/music_bakcend_micorservice/database"
 )
 
 var jwtKey = []byte("your_secret_key")
@@ -63,13 +63,13 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		val, err := myredis.Rdb.Get(myredis.Ctx, tokenString).Result()
+		val, err := database.Rdb.Get(database.Ctx, tokenString).Result()
 		if errors.Is(err, redis.Nil) || val == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token已过期"})
 			c.Abort()
 			return
 		}
-		
+
 		// 存储用户信息到上下文
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)

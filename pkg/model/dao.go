@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/gsq/music_bakcend_micorservice/pkg/config"
+	"github.com/gsq/music_bakcend_micorservice/database"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -32,8 +32,8 @@ type User struct {
 }
 
 func init() {
-	config.Connect()
-	db = config.GetDB()
+	database.Connect()
+	db = database.GetDB()
 }
 
 func GetSongs() []Song {

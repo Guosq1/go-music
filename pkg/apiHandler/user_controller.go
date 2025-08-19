@@ -5,11 +5,23 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gsq/music_bakcend_micorservice/myredis"
+	"github.com/gsq/music_bakcend_micorservice/database"
 	"github.com/gsq/music_bakcend_micorservice/pkg/model"
 	"github.com/gsq/music_bakcend_micorservice/utils"
 )
 
+// CheckAuth 检查用户是否已登录
+func CheckAuth(c *gin.Context) {
+	// 该函数由JWT中间件保护
+	// 如果能到达这里，说明用户已经登录
+	username, _ := c.Get("username")
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Authenticated",
+		"username": username,
+	})
+}
+
+// Register 用户注册
 func Register(c *gin.Context) {
 
 	var req struct {
@@ -33,6 +45,7 @@ func Register(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Registration successful", "user": user.Username})
 }
 
+// Login 用户登录
 func Login(c *gin.Context) {
 
 	var req struct {
@@ -55,36 +68,37 @@ func Login(c *gin.Context) {
 	if !user.CheckPassword(req.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
 		return
-	}
-
-	var expireTime time.Duration
-	if req.Remember {
-		expireTime = time.Hour * 24 * 30
 	} else {
-		expireTime = time.Minute * 30
-	}
 
-	tokenString, err := utils.GenerateJWT(user.ID, expireTime)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成token失败"})
-		return
-	}
+		var expireTime time.Duration
+		if req.Remember {
+			expireTime = time.Hour * 24 * 30
+		} else {
+			expireTime = time.Minute * 30
+		}
 
-	err = myredis.Rdb.Set(myredis.Ctx, tokenString, user.ID, expireTime).Err()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存token失败"})
-		return
-	}
+		tokenString, err := utils.GenerateJWT(user.ID, expireTime)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "生成token失败"})
+			return
+		}
 
-	maxAge := 1800
-	if req.Remember {
-		maxAge = 30 * 24 * 3600
-	}
+		err = database.Rdb.Set(database.Ctx, tokenString, user.ID, expireTime).Err()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "保存token失败"})
+			return
+		}
 
-	c.SetCookie("jwt_token", tokenString, maxAge, "/", "", false, true)
-	// 这里可以返回 JWT 或 session
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful", "user": user.Username,
-		"remember": req.Remember,
-	})
+		maxAge := 1800
+		if req.Remember {
+			maxAge = 30 * 24 * 3600
+		}
+
+		c.SetCookie("jwt_token", tokenString, maxAge, "/", "", false, true)
+		// 这里可以返回 JWT 或 session
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Login successful", "user": user.Username,
+			"remember": req.Remember,
+		})
+	}
 }

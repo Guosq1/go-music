@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/gsq/music_bakcend_micorservice/myredis"
+	"github.com/gsq/music_bakcend_micorservice/database"
 	"log"
 	"net/http"
 )
@@ -27,7 +27,7 @@ func (s *Server) Run() error {
 		Handler: s.handler,
 	}
 
-	myredis.InitRedis()
+	database.InitRedis()
 
 	log.Printf("Server start and listen at %s.", httpServ.Addr)
 	if err := httpServ.ListenAndServe(); err != nil {

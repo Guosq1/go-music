@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <title>登录</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .container { text-align: center; }
-        input { display: block; margin: 10px auto; padding: 10px; width: 200px; border-radius: 5px; border: none; }
-        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background-color: #1db954; color: white; }
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { text-align: center; background-color: #1e1e1e; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); width: 300px; }
+        input { display: block; margin: 10px auto; padding: 10px; width: 200px; border-radius: 5px; border: none; background-color: #333; color: white; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background-color: #1db954; color: white; margin-top: 15px; transition: background-color 0.3s; }
+        button:hover { background-color: #1ed760; }
+        .remember-me { display: flex; align-items: center; justify-content: center; margin: 10px auto; width: 200px; }
+        .remember-me input { display: inline-block; width: auto; margin-right: 5px; }
+        .error-message { color: #ff4d4d; margin-top: 10px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -15,26 +19,72 @@
     <h1>登录</h1>
     <input type="text" id="username" placeholder="用户名">
     <input type="password" id="password" placeholder="密码">
+    <div class="remember-me">
+        <input type="checkbox" id="remember">
+        <label for="remember">记住我</label>
+    </div>
     <button onclick="login()">登录</button>
+    <div id="error-message" class="error-message"></div>
     <p>没有账号？<a href="register.html" style="color: #1db954;">去注册</a></p>
 </div>
 
 <script>
+    // 检查是否已经登录
+    function checkLoginStatus() {
+        // 尝试访问需要认证的页面，如果成功则直接跳转
+        fetch('/api/check-auth', {
+            method: 'GET',
+            credentials: 'same-origin'
+        }).then(response => {
+            if (response.ok) {
+                location.href = 'music.html';
+            }
+        }).catch(err => {
+            location.href = 'login.html';
+
+        });
+    }
+
+    // 页面加载时检查登录状态
+    window.onload = checkLoginStatus;
+
     function login() {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
+        const remember = document.getElementById('remember').checked;
+        const errorMessage = document.getElementById('error-message');
+
+        // 清空错误信息
+        errorMessage.textContent = '';
 
         if (!username || !password) {
-            alert('请填写用户名和密码');
+            errorMessage.textContent = '请填写用户名和密码';
             return;
         }
 
-        // 这里可以调用你的后端登录 API
-        fetch('/api/login', { method:'POST', body: JSON.stringify({username, password}) })
-
-        // 假设登录成功
-        alert('登录成功，进入音乐播放页面');
-        location.href = 'music.html';
+        // 调用后端登录 API
+        fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({username, password, remember}),
+            credentials: 'same-origin' // 确保cookie被正确设置
+        }).then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '登录失败');
+                });
+            }
+            return response.json();
+        }).then(data => {
+            // 登录成功
+            alert('登录成功，进入音乐播放页面');
+            location.href = 'music.html';
+        }).catch(err => {
+            // 登录失败
+            errorMessage.textContent = err.message;
+        });
     }
 </script>
 </body>
