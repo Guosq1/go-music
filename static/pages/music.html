@@ -606,6 +606,9 @@
                     <div class="avatar">
                         <i class="fas fa-user"></i>
                     </div>
+                    <button class="logout-btn" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt"></i> 登出
+                    </button>
                 </div>
             </div>
 
@@ -718,11 +721,22 @@
         let currentSongIndex = -1;
         let isPlaying = false;
 
-        // 获取全部歌曲
-        function loadSongs() {
-            fetch('/api/songs')
-                .then(res => res.json())
+        // 获取用户播放历史
+        function loadUserPlayHistory() {
+            // 调试信息：打印cookie
+            console.log('当前cookie:', document.cookie);
+            fetch('/api/play-history', {
+                credentials: 'same-origin'
+            })
+                .then(res => {
+                    console.log('获取播放历史响应状态:', res.status);
+                    if (!res.ok) {
+                        throw new Error('获取播放历史失败: ' + res.statusText);
+                    }
+                    return res.json();
+                })
                 .then(data => {
+                    // 保存完整的播放历史记录（包含歌曲信息和播放时间）
                     songList = data;
                     renderSongList();
 
@@ -731,6 +745,10 @@
                         currentSongIndex = 0;
                         updateNowPlayingInfo();
                     }
+                })
+                .catch(error => {
+                    console.error('Error loading play history:', error);
+                    // 错误处理，可以显示提示信息
                 });
         }
 
@@ -742,10 +760,12 @@
                     <div class="list-col-2">歌曲</div>
                     <div class="list-col-3">歌手</div>
                     <div class="list-col-4">时长</div>
+                    <div class="list-col-5">操作</div>
                 </div>
             `;
 
-            songList.forEach((song, index) => {
+            songList.forEach((item, index) => {
+                const song = item.song;
                 const songItem = document.createElement("div");
                 songItem.className = `song-item ${index === currentSongIndex ? 'active' : ''}`;
                 songItem.innerHTML = `
@@ -753,7 +773,17 @@
                     <div class="list-col-2 song-name">${song.title}</div>
                     <div class="list-col-3 song-artist-name">${song.artist}</div>
                     <div class="list-col-4 song-duration">${formatTime(song.duration || 0)}</div>
+                    <div class="list-col-5 song-actions">
+                        <button class="delete-btn" data-song-id="${song.id}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 `;
+                
+                // 添加删除按钮事件监听
+                const deleteBtn = songItem.querySelector('.delete-btn');
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation(); // 阻止事件冒泡到songItem
+                    deletePlayHistory(song.id, index);
+                };
                 songItem.onclick = () => {
                     currentSongIndex = index;
                     playSong();
@@ -766,13 +796,40 @@
         function playSong() {
             if (currentSongIndex < 0 || currentSongIndex >= songList.length) return;
 
-            const song = songList[currentSongIndex];
+            const item = songList[currentSongIndex];
+            const song = item.song;
             audioPlayer.src = song.url;
             audioPlayer.play();
             isPlaying = true;
             updatePlayButton();
             updateNowPlayingInfo();
             renderSongList(); // 更新列表选中状态
+
+            // 记录播放历史
+            recordPlayHistory(song.id);
+        }
+
+        // 记录播放历史
+        function recordPlayHistory(songId) {
+            fetch(`/api/songs/${songId}/play`, {
+                method: 'POST',
+                credentials: 'same-origin' // 包含cookie
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('记录播放历史失败');
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log('播放历史记录成功:', data);
+                // 不立即刷新播放历史列表，避免索引问题
+                // 仅在需要时（如删除后）手动刷新
+            })
+            .catch(error => {
+                console.error('Error recording play history:', error);
+                // 错误处理，可以显示提示信息
+            });
         }
 
         // 暂停歌曲
@@ -818,16 +875,17 @@
         function updateNowPlayingInfo() {
             if (currentSongIndex < 0 || currentSongIndex >= songList.length) return;
 
-            const song = songList[currentSongIndex];
+            const item = songList[currentSongIndex];
+            const song = item.song;
             currentSongTitle.textContent = song.title;
             currentSongArtist.textContent = song.artist;
             miniSongTitle.textContent = song.title;
             miniSongArtist.textContent = song.artist;
 
-            // 随机专辑封面（实际应用中应使用真实封面）
-            const randomId = Math.floor(Math.random() * 1000);
-            miniAlbumCover.src = `https://picsum.photos/id/${randomId}/100/100`;
-            document.querySelector('.album-cover img').src = `https://picsum.photos/id/${randomId}/400/400`;
+            // 使用实际专辑封面
+            const coverUrl = song.cover_url || 'https://picsum.photos/id/1025/100/100'; // 提供默认封面
+            miniAlbumCover.src = coverUrl;
+            document.querySelector('.album-cover img').src = coverUrl.replace('/100/100', '/400/400');
         }
 
         // 格式化时间
@@ -905,12 +963,12 @@
                         `;
                         songItem.onclick = () => {
                             // 查找歌曲在列表中的位置
-                            const foundIndex = songList.findIndex(s => s.id === song.id);
+                            const foundIndex = songList.findIndex(s => s.song.id === song.id);
                             if (foundIndex !== -1) {
                                 currentSongIndex = foundIndex;
                             } else {
-                                // 如果不在列表中，添加到列表
-                                songList.push(song);
+                                // 如果不在列表中，添加到列表（保持与播放历史相同的数据结构）
+                                songList.push({song: song, played_at: new Date()});
                                 currentSongIndex = songList.length - 1;
                                 renderSongList();
                             }
@@ -937,8 +995,90 @@
             }
         });
 
-        // 页面加载时显示全部歌曲
-        window.addEventListener('load', loadSongs);
+        // 删除播放历史
+        function deletePlayHistory(songId, index) {
+            // 调试信息：打印cookie
+            console.log('删除时cookie:', document.cookie);
+            if (confirm('确定要从播放历史中删除这首歌吗？')) {
+                fetch(`/api/play-history/${songId}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('删除播放历史失败');
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('删除播放历史成功:', data);
+                    // 重新加载播放历史列表
+                    loadUserPlayHistory();
+                })
+                .catch(error => {
+                    console.error('Error deleting play history:', error);
+                    alert('删除播放历史失败: ' + error.message);
+                });
+            }
+        }
+
+        // 登出功能
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('登出失败');
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('登出成功:', data);
+                    // 跳转到登录页面
+                        window.location.href = '/pages/login.html';
+                })
+                .catch(error => {
+                    console.error('登出失败:', error);
+                    alert('登出失败，请重试');
+                });
+            });
+        }
+
+        // 检查登录状态
+        function checkLoginStatus() {
+            console.log('尝试检查登录状态...');
+            fetch('/api/check-auth', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                console.log('登录状态检查响应状态:', response.status);
+                if (response.ok) {
+                    console.log('已登录，加载播放历史');
+                    loadUserPlayHistory();
+                } else {
+                    console.log('未登录，重定向到登录页面');
+                    window.location.href = '/pages/login.html';
+                }
+            }).catch(err => {
+                console.error('检查登录状态失败:', err.message);
+                // 显示错误信息给用户
+                alert('无法连接到服务器: ' + err.message);
+            });
+        }
+
+        // 页面加载时检查登录状态
+        window.addEventListener('load', function() {
+            // 调试信息：页面加载时打印cookie
+            console.log('页面加载时cookie:', document.cookie);
+            checkLoginStatus();
+        });
     </script>
 </body>
 </html>

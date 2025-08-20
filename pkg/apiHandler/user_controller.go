@@ -6,14 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gsq/music_bakcend_micorservice/database"
+	"github.com/gsq/music_bakcend_micorservice/middleware"
 	"github.com/gsq/music_bakcend_micorservice/pkg/model"
-	"github.com/gsq/music_bakcend_micorservice/utils"
 )
 
-// CheckAuth 检查用户是否已登录
 func CheckAuth(c *gin.Context) {
-	// 该函数由JWT中间件保护
-	// 如果能到达这里，说明用户已经登录
+
 	username, _ := c.Get("username")
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Authenticated",
@@ -77,7 +75,7 @@ func Login(c *gin.Context) {
 			expireTime = time.Minute * 30
 		}
 
-		tokenString, err := utils.GenerateJWT(user.ID, expireTime)
+		tokenString, err := middleware.GenerateJWT(user.ID, expireTime)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "生成token失败"})
 			return
@@ -101,4 +99,21 @@ func Login(c *gin.Context) {
 			"remember": req.Remember,
 		})
 	}
+}
+
+func Logout(c *gin.Context) {
+
+	// 从cookie中获取token
+	tokenString, err := c.Cookie("jwt_token")
+	if err == nil && tokenString != "" {
+		// 从Redis中删除token
+		database.Rdb.Del(database.Ctx, tokenString)
+	}
+
+	// 清除cookie
+	c.SetCookie("jwt_token", "", -1, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout successful",
+	})
 }

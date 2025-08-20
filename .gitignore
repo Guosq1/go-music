@@ -1,2 +1,4 @@
 static/resources/
 .idea/
+tmp/
+.air.toml

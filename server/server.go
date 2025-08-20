@@ -1,9 +1,10 @@
 package server
 
 import (
-	"github.com/gsq/music_bakcend_micorservice/database"
 	"log"
 	"net/http"
+
+	"github.com/gsq/music_bakcend_micorservice/database"
 )
 
 type Server struct {
